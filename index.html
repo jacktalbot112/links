@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#061410" />
+<title>Jack Talbot</title>
+<meta name="description" content="Director at Leverage Capital and co-founder of Co.Credit." />
+
+<!-- Open Graph -->
+<meta property="og:title" content="Jack Talbot" />
+<meta property="og:description" content="Director at Leverage Capital and co-founder of Co.Credit." />
+<meta property="og:type" content="profile" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<header class="topbar">
+  <a href="#" class="brand"><span>JT.</span></a>
+</header>
+
+<main class="page">
+  <section class="hero">
+    <div class="portrait" aria-hidden="true">
+      <img src="portrait.jpg" alt="" />
+    </div>
+    <h1 class="name" id="profile-name">JACK TALBOT</h1>
+  </section>
+
+  <section class="info">
+    <p class="info-text">
+      <span class="info-label">Information</span>
+      <span id="profile-bio"></span>
+    </p>
+  </section>
+
+  <section class="carousel-wrap" aria-label="Links">
+    <div class="carousel-track" id="carousel-track" role="list"></div>
+  </section>
+
+  <footer class="page-footer">
+    <p class="footer-text">© <span id="footer-year"></span> Jack Talbot</p>
+  </footer>
+</main>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-hidden="true">
+  <div class="modal-backdrop" data-close></div>
+  <div class="modal-card" role="document">
+    <button class="modal-close" data-close aria-label="Close">×</button>
+    <div class="modal-media" id="modal-media"></div>
+    <div class="modal-body">
+      <h2 id="modal-title"></h2>
+      <p id="modal-desc"></p>
+      <a id="modal-link" class="modal-cta" href="#" target="_blank" rel="noopener">Open link →</a>
+    </div>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
