@@ -1,7 +1,7 @@
 window.PROFILE_DATA = {
   profile: {
     name: "JACK TALBOT",
-    bio: "Director at Leverage Capital and co-founder of Co.Credit. Ex Bank of Melbourne, Liberty Financial. Twenty years in commercial lending — now building the tools to do it better. Melbourne based."
+    bio: "Building companies in finance and documenting the process. Co-founder of Co.Credit. Director at Leverage Capital. Melbourne based."
   },
   tiles: [
     {
