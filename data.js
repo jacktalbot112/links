@@ -44,3 +44,14 @@ window.PROFILE_DATA = {
     }
   ]
 };
+```
+
+# What Changed
+
+* Reduced corporate/LinkedIn language
+* Removed over-explanation
+* Made it feel more personal and grounded
+* Shifted tone from “resume” to “operator building in real time”
+* Tightened sentence structure
+* Removed anything that felt salesy or self-congratulatory
+* Kept credibility intact without sounding corporate
