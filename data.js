@@ -1,6 +1,3 @@
-# Revised Copy for `data.js`
-
-```js
 window.PROFILE_DATA = {
   profile: {
     name: "JACK TALBOT",
@@ -10,7 +7,7 @@ window.PROFILE_DATA = {
     {
       label: "Co.Credit",
       title: "Funding brokers against trail income.",
-      description: "Building Co.Credit. We help Australian mortgage brokers access capital to buy trail books, grow, or unlock equity from the business they’ve built — without property security.",
+      description: "Building Co.Credit. We help Australian mortgage brokers access capital to buy trail books, grow, or unlock equity from the business they have built, without property security.",
       media: "media/cocredit.jpg",
       link: "https://www.cocredit.com.au"
     },
@@ -31,7 +28,7 @@ window.PROFILE_DATA = {
     {
       label: "LinkedIn",
       title: "Thoughts from inside the industry.",
-      description: "Deal flow, lending, capital raising, business growth, and what I’m learning while building in public.",
+      description: "Deal flow, lending, capital raising, business growth, and what I am learning while building in public.",
       media: "media/linkedin.jpg",
       link: "https://www.linkedin.com/in/talbotjack"
     },
@@ -44,14 +41,3 @@ window.PROFILE_DATA = {
     }
   ]
 };
-```
-
-# What Changed
-
-* Reduced corporate/LinkedIn language
-* Removed over-explanation
-* Made it feel more personal and grounded
-* Shifted tone from “resume” to “operator building in real time”
-* Tightened sentence structure
-* Removed anything that felt salesy or self-congratulatory
-* Kept credibility intact without sounding corporate
