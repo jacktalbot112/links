@@ -1,84 +1,104 @@
 # Jack Talbot — personal link page
 
-A self-hosted, fully bespoke link-in-bio page. Plain HTML/CSS/JS — no build step, no framework, no database, no monthly fees, no third-party branding.
+Self-hosted, fully bespoke link-in-bio page. Plain HTML/CSS/JS — no build step, no framework, no database, no monthly fees.
+
+Live URL: **jacktalbot.com.au**
 
 ## What's here
 
 ```
 index.html        ← page structure
 styles.css        ← all visual styling (theme, gradient, animations)
-app.js            ← carousel, infinite scroll, modal logic
+app.js            ← carousel, infinite scroll, video, modals, icons
 data.js           ← YOUR CONTENT lives here. Edit this.
 portrait.jpg      ← header photo (above the name)
 media/
-  cocredit.jpg
+  cocredit.mp4    ← Co.Credit tile (video)
   leverage-capital.jpg
   podcast.jpg
   linkedin.jpg
   instagram.jpg
+README.md
 ```
 
-Total weight: ~85KB. Loads instantly.
+## What it does
+
+- **Hero block** — circular portrait, big black "JACK TALBOT" headline, bio paragraph
+- **Carousel** of 5 tiles, auto-scrolling left at 80px/sec, infinite loop in both directions
+- **Swipe** on mobile, **click + drag** on desktop, plus **hover arrows** on desktop only
+- **"Scroll →" hint** above the carousel with a subtle nudge animation
+- **Video tiles** — autoplay, muted, looping (currently only Co.Credit)
+- **Animated waveform overlay** on the Podcast tile
+- **Per-tile modal** — opens on "See More" click, shows full description and a contextual icon button (Co.Credit logo, Leverage Capital chevron, podcast mic, LinkedIn, Instagram) plus "Click to explore more." label
+- **Hunter green theme** — deep emerald gradient with brass accents, subtle drift animation
+- **Custom font** — Geist via Google Fonts
 
 ## How to edit content
 
-Open `data.js` in any text editor. Update:
+Open `data.js`. Update:
 
 - `profile.name` — the big headline
-- `profile.bio` — the "Information" paragraph under your name
-- `tiles[]` — each card in the scrollable carousel
+- `profile.bio` — the paragraph under your name
+- `tiles[]` — each card
 
 Each tile takes:
 
-| field         | what it is                                                    |
-|---------------|---------------------------------------------------------------|
-| `label`       | small pill in the top-left of the card                        |
-| `title`       | bold headline overlaid on the bottom                          |
-| `description` | smaller text under the title                                  |
-| `media`       | path to an image (e.g. `media/cocredit.jpg`)                  |
-| `link`        | URL the card opens when tapped                                |
+| field         | what it does                                                          |
+|---------------|-----------------------------------------------------------------------|
+| `label`       | small pill in the top-left of the card                                |
+| `title`       | bold headline overlaid on the bottom                                  |
+| `description` | smaller text under the title, also shown in modal                     |
+| `media`       | path to image (.jpg, .png) or video (.mp4, .webm)                     |
+| `link`        | URL the modal CTA opens                                               |
+| `icon`        | optional. One of: cocredit, leverage, mic, linkedin, instagram        |
+| `overlay`     | optional. Currently only "waveform" is supported                      |
 
-To add a tile, copy an existing one and change the values. Add the new image to `media/`.
+## Adding a video tile
 
-To replace the header photo, drop your new photo in as `portrait.jpg` (square, at least 600×600 recommended).
+1. Drop the video file into `media/`. **Must be MP4 with H.264 codec, no audio track.** Target 720×960 portrait, 4-8 seconds, under 1.5MB.
+2. Update the tile's `media:` to point at the new file (e.g. `media/leverage.mp4`)
+3. Done — autoplay/loop/mute is wired up automatically
 
-To change the colour theme, open `styles.css` and look for `/* ===== Theme ===== */` near the top — the gradient is defined as a stack of radial gradients on the `html, body` selector.
+If you have a video in HEVC (H.265) or with audio, re-encode with:
 
-## How to deploy (Cloudflare Pages — free)
+```bash
+ffmpeg -i source.mp4 -an -c:v libx264 -preset slow -crf 26 \
+  -profile:v main -pix_fmt yuv420p -movflags +faststart \
+  -vf "scale=720:960:flags=lanczos" output.mp4
+```
 
-1. Make a free GitHub account if you don't have one.
-2. Create a new repo (call it whatever — e.g. `links`). Upload these files keeping the same folder structure (`media/` stays as a folder).
-3. Go to https://dash.cloudflare.com → Workers & Pages → Create → Pages → Connect to Git.
-4. Pick the repo. Build command: leave blank. Output directory: `/`. Click deploy.
-5. You get a free `your-name.pages.dev` URL straight away.
-6. (Optional) Add a custom domain — `links.leveragecapital.com.au`, `jack.cocredit.com.au`, or whatever — under the "Custom domains" tab. Cloudflare walks you through DNS in two clicks.
+## How to deploy
 
-That's it. Total cost: $0 (or ~$10/year if you want a fresh custom domain).
+The site is hosted on Cloudflare Workers/Pages connected to a GitHub repo.
 
-## How to test locally
+**To make changes:**
+1. Edit any file in the GitHub repo (web editor works fine — pencil icon on each file)
+2. Commit changes
+3. Cloudflare auto-redeploys in ~30 seconds
+4. Refresh jacktalbot.com.au to see live
+
+**To replace media files:** drag and drop into the appropriate folder in GitHub, commit. Same auto-deploy.
+
+## Local preview
 
 ```bash
 cd jack-talbot-site
 python3 -m http.server 8000
-# then visit http://localhost:8000 in your browser
+# visit http://localhost:8000 in browser
 ```
 
-(You can also just double-click `index.html`, but some browsers block local image loading from file:// URLs. The Python server avoids that.)
+(Don't double-click index.html directly — local file:// URLs sometimes block videos and CORS for fonts.)
 
-## Notes on what's already wired up
+## Theme tweaks
 
-- **Co.Credit** → https://www.cocredit.com.au
-- **Leverage Capital** → https://www.leveragecapital.com.au
-- **The Podcast** → https://podcasts.apple.com/us/podcast/leverage-capital-jack-talbot/id1752419438
-- **LinkedIn** → https://www.linkedin.com/in/talbotjack
-- **Instagram** → https://www.instagram.com/jacktalbot (update if your handle is different)
+- **Auto-scroll speed**: app.js, find PIXELS_PER_SECOND (currently 80). Higher = faster.
+- **Background gradient**: styles.css, top of file. The four hex colours #14402e, #8a6a30, #08201a, #061410 define the Hunter palette.
+- **Waveform speed**: app.js, the three time multipliers in the wave path build (currently 1.8, 2.7, 1.05). Higher = faster.
 
-## Carousel behaviour
+## Tile links
 
-The bottom carousel auto-drifts to the left at ~40px/sec, infinitely loops in both directions, and is fully swipeable on touch. Pauses while you're touching it; resumes once the momentum scroll has settled. Three copies of the tile set are rendered side-by-side and the scroll position is invisibly reset when you cross a copy boundary, so it never runs out of content.
-
-To change the auto-scroll speed: edit `PIXELS_PER_SECOND` in `app.js` (currently 40).
-
-## Tile images
-
-The current tile images are abstract gradient placeholders, colour-graded to suit the theme. When you have proper photography (lifestyle shots, product shots, podcast cover art, etc.), drop them into `media/` and update the paths in `data.js`. Recommended portrait orientation, ~600×800px, JPEG quality 80.
+- Co.Credit → https://www.cocredit.com.au
+- Leverage Capital → https://www.leveragecapital.com.au
+- The Podcast → Apple Podcasts (Leverage Capital || Jack Talbot)
+- LinkedIn → https://www.linkedin.com/in/talbotjack
+- Instagram → https://www.instagram.com/jacktalbot

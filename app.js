@@ -8,8 +8,8 @@
   const nameEl = document.getElementById('profile-name');
   const bioEl  = document.getElementById('profile-bio');
   if (nameEl) nameEl.textContent = data.profile.name;
-  if (bioEl)  bioEl.textContent  = ' ' + data.profile.bio;
-  document.title = data.profile.name;
+  if (bioEl)  bioEl.textContent  = data.profile.bio;
+  // Page title is set in index.html — don't override here
 
   const track = document.getElementById('carousel-track');
 
@@ -19,13 +19,53 @@
     el.setAttribute('role', 'listitem');
     if (isClone) el.setAttribute('aria-hidden', 'true');
 
-    const img = document.createElement('img');
-    img.className = 'tile-media';
-    img.src = tile.media;
-    img.alt = '';
-    img.loading = 'lazy';
-    img.decoding = 'async';
-    el.appendChild(img);
+    // Render media as either <img> or <video> based on the file extension.
+    // Videos must be muted+playsinline+autoplay+loop to autoplay on mobile.
+    const isVideo = /\.(mp4|webm|mov)(\?.*)?$/i.test(tile.media || '');
+    let media;
+    if (isVideo) {
+      media = document.createElement('video');
+      media.className = 'tile-media';
+      media.src = tile.media;
+      media.muted = true;
+      media.loop = true;
+      media.playsInline = true;
+      media.autoplay = true;
+      media.preload = 'auto';
+      media.setAttribute('muted', '');
+      media.setAttribute('playsinline', '');
+      media.setAttribute('webkit-playsinline', '');
+      media.setAttribute('autoplay', '');
+      media.setAttribute('loop', '');
+      // Nudge play() once metadata is loaded; some browsers (Safari especially)
+      // refuse to autoplay until the call is explicit.
+      const tryPlay = () => {
+        const p = media.play();
+        if (p && typeof p.catch === 'function') p.catch(() => {});
+      };
+      media.addEventListener('loadedmetadata', tryPlay);
+      media.addEventListener('canplay', tryPlay);
+    } else {
+      media = document.createElement('img');
+      media.className = 'tile-media';
+      media.src = tile.media;
+      media.alt = '';
+      media.loading = 'lazy';
+      media.decoding = 'async';
+    }
+    el.appendChild(media);
+
+    // Optional overlay (currently supports 'waveform' for podcast-style tiles)
+    if (tile.overlay === 'waveform') {
+      const wave = document.createElement('div');
+      wave.className = 'tile-waveform';
+      wave.innerHTML = `
+        <svg viewBox="0 0 400 60" preserveAspectRatio="none" aria-hidden="true">
+          <path class="wave-path wave-1" d="M0,30 Q25,30 50,30 T100,30 T150,30 T200,30 T250,30 T300,30 T350,30 T400,30" />
+          <path class="wave-path wave-2" d="M0,30 Q25,30 50,30 T100,30 T150,30 T200,30 T250,30 T300,30 T350,30 T400,30" />
+        </svg>`;
+      el.appendChild(wave);
+    }
 
     const pills = document.createElement('div');
     pills.className = 'tile-pills';
@@ -64,14 +104,67 @@
   // Render tiles THREE TIMES so the user is always in the middle copy.
   // This means we can wrap invisibly in either direction without ever
   // running out of content on the side they're swiping toward.
-  data.tiles.forEach((t, i) => track.appendChild(buildTile(t, i, false))); // copy A
-  data.tiles.forEach((t, i) => track.appendChild(buildTile(t, i, true)));  // copy B (the "real" one user sees)
-  data.tiles.forEach((t, i) => track.appendChild(buildTile(t, i, true)));  // copy C
+  data.tiles.forEach((t, i) => track.appendChild(buildTile(t, i, true)));  // copy A (clone, on the left)
+  data.tiles.forEach((t, i) => track.appendChild(buildTile(t, i, false))); // copy B (the visible one user starts on)
+  data.tiles.forEach((t, i) => track.appendChild(buildTile(t, i, true)));  // copy C (clone, on the right)
+
+  // ---- Animated waveform driver ----
+  // Generates a smooth pseudo-audio waveform path and updates all .wave-path
+  // elements on a shared rAF loop. One loop, all tiles, low CPU.
+  const wavePaths = document.querySelectorAll('.tile-waveform .wave-path');
+  if (wavePaths.length > 0) {
+    const POINTS = 40;        // resolution of the wave
+    const W = 400, H = 60, MID = 30;
+    const AMP = 14;           // peak amplitude
+
+    function buildPath(t, phaseOffset, ampScale) {
+      // Layered sine waves at different frequencies for an organic look
+      const pts = [];
+      for (let i = 0; i <= POINTS; i++) {
+        const x = (i / POINTS) * W;
+        const fx = i / POINTS;
+        const y = MID
+          + Math.sin(fx * 6.28 * 2 + t * 1.8 + phaseOffset) * AMP * 0.6 * ampScale
+          + Math.sin(fx * 6.28 * 4.7 + t * 2.7 + phaseOffset * 1.3) * AMP * 0.35 * ampScale
+          + Math.sin(fx * 6.28 * 1.3 + t * 1.05) * AMP * 0.25 * ampScale;
+        // Envelope: dampen toward edges so the line tapers naturally
+        const envelope = Math.sin(fx * Math.PI);
+        pts.push([x, MID + (y - MID) * envelope]);
+      }
+      // Build a smooth path using quadratic curves through midpoints
+      let d = `M${pts[0][0]},${pts[0][1]}`;
+      for (let i = 1; i < pts.length - 1; i++) {
+        const [x1, y1] = pts[i];
+        const [x2, y2] = pts[i + 1];
+        const mx = (x1 + x2) / 2;
+        const my = (y1 + y2) / 2;
+        d += ` Q${x1},${y1} ${mx},${my}`;
+      }
+      const last = pts[pts.length - 1];
+      d += ` T${last[0]},${last[1]}`;
+      return d;
+    }
+
+    let waveStart = performance.now();
+    function waveTick() {
+      const t = (performance.now() - waveStart) / 1000;
+      // Update both wave layers; wave-2 is offset for parallax
+      wavePaths.forEach((p) => {
+        if (p.classList.contains('wave-2')) {
+          p.setAttribute('d', buildPath(t, 1.8, 0.7));
+        } else {
+          p.setAttribute('d', buildPath(t, 0, 1));
+        }
+      });
+      requestAnimationFrame(waveTick);
+    }
+    requestAnimationFrame(waveTick);
+  }
 
   // ---- Infinite auto-scroll + swipe ----
   let autoScrollPaused = true;  // start paused; un-pause once parked
   let lastTimestamp = null;
-  const PIXELS_PER_SECOND = 40;
+  const PIXELS_PER_SECOND = 80;
   let isTouching = false;
   let lastScrollTime = 0;
 
@@ -128,6 +221,80 @@
   track.addEventListener('mouseenter', () => { isTouching = true; });
   track.addEventListener('mouseleave', () => { isTouching = false; lastTimestamp = null; });
 
+  // ---- Desktop arrows (Option 1) ----
+  // Inject prev/next buttons into the carousel-wrap (CSS hides them on touch devices).
+  const carouselWrap = document.querySelector('.carousel-wrap');
+  if (carouselWrap) {
+    const prevBtn = document.createElement('button');
+    prevBtn.className = 'carousel-arrow prev';
+    prevBtn.setAttribute('aria-label', 'Previous tiles');
+    prevBtn.innerHTML = '‹';
+
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'carousel-arrow next';
+    nextBtn.setAttribute('aria-label', 'Next tiles');
+    nextBtn.innerHTML = '›';
+
+    carouselWrap.appendChild(prevBtn);
+    carouselWrap.appendChild(nextBtn);
+
+    function getTileWidth() {
+      const tile = track.querySelector('.tile');
+      if (!tile) return 320;
+      // tile width + gap
+      return tile.getBoundingClientRect().width + 14;
+    }
+
+    prevBtn.addEventListener('click', () => {
+      track.scrollBy({ left: -getTileWidth(), behavior: 'smooth' });
+    });
+    nextBtn.addEventListener('click', () => {
+      track.scrollBy({ left: getTileWidth(), behavior: 'smooth' });
+    });
+  }
+
+  // ---- Click-and-drag for desktop (Option 3) ----
+  // Mouse-down + drag scrolls the track, like swiping on mobile.
+  let isDragging = false;
+  let dragStartX = 0;
+  let dragStartScrollLeft = 0;
+  let dragMoved = false;
+
+  track.addEventListener('mousedown', (e) => {
+    // Only main button, and skip if clicking on an arrow or pill
+    if (e.button !== 0) return;
+    if (e.target.closest('.carousel-arrow') || e.target.closest('.pill')) return;
+    isDragging = true;
+    dragMoved = false;
+    dragStartX = e.pageX;
+    dragStartScrollLeft = track.scrollLeft;
+    track.style.cursor = 'grabbing';
+    // Prevent text selection during drag
+    e.preventDefault();
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const dx = e.pageX - dragStartX;
+    if (Math.abs(dx) > 4) dragMoved = true;
+    track.scrollLeft = dragStartScrollLeft - dx;
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (!isDragging) return;
+    isDragging = false;
+    track.style.cursor = '';
+  });
+
+  // If the user dragged, suppress the click that would otherwise open the tile's link
+  track.addEventListener('click', (e) => {
+    if (dragMoved) {
+      e.stopPropagation();
+      e.preventDefault();
+      dragMoved = false;
+    }
+  }, true); // capture phase, runs before tile's own click handler
+
 
   const modal = document.getElementById('modal');
   const modalMedia = document.getElementById('modal-media');
@@ -135,17 +302,65 @@
   const modalDesc  = document.getElementById('modal-desc');
   const modalLink  = document.getElementById('modal-link');
 
+  // Inline SVG icons keyed by slug. All sized 22x22 currentColor for easy theming.
+  const ICONS = {
+    instagram: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>`,
+    linkedin: `<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M20.45 20.45h-3.55v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.13 1.45-2.13 2.94v5.67H9.36V9h3.41v1.56h.05a3.74 3.74 0 0 1 3.37-1.85c3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.72V1.72C24 .77 23.2 0 22.22 0z"/></svg>`,
+    mic: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>`,
+    // Co.Credit — wordmark-style "CO." in a rounded square
+    cocredit: `<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><rect x="1" y="3" width="22" height="18" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><text x="12" y="16" text-anchor="middle" font-family="-apple-system, system-ui, sans-serif" font-size="9" font-weight="800" letter-spacing="-0.05em">CO.</text></svg>`,
+    // Leverage Capital — chevron/up-and-to-the-right (capital growth)
+    leverage: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="14 7 21 7 21 14"/></svg>`,
+  };
+
   function openModal(index) {
     const tile = data.tiles[index];
     if (!tile) return;
     modalMedia.innerHTML = '';
-    const img = document.createElement('img');
-    img.src = tile.media;
-    img.alt = tile.title || '';
-    modalMedia.appendChild(img);
+
+    const isVideo = /\.(mp4|webm|mov)(\?.*)?$/i.test(tile.media || '');
+    let mediaEl;
+    if (isVideo) {
+      mediaEl = document.createElement('video');
+      mediaEl.src = tile.media;
+      mediaEl.muted = true;
+      mediaEl.loop = true;
+      mediaEl.playsInline = true;
+      mediaEl.autoplay = true;
+      mediaEl.setAttribute('muted', '');
+      mediaEl.setAttribute('playsinline', '');
+      mediaEl.setAttribute('webkit-playsinline', '');
+      mediaEl.setAttribute('autoplay', '');
+      mediaEl.setAttribute('loop', '');
+      const tryPlay = () => {
+        const p = mediaEl.play();
+        if (p && typeof p.catch === 'function') p.catch(() => {});
+      };
+      mediaEl.addEventListener('loadedmetadata', tryPlay);
+      mediaEl.addEventListener('canplay', tryPlay);
+    } else {
+      mediaEl = document.createElement('img');
+      mediaEl.src = tile.media;
+      mediaEl.alt = tile.title || '';
+    }
+    modalMedia.appendChild(mediaEl);
+
     modalTitle.textContent = tile.title || '';
     modalDesc.textContent  = tile.description || '';
     modalLink.href = tile.link || '#';
+
+    // Render icon-only CTA. Falls back to "Open link →" if no icon defined.
+    const iconSvg = tile.icon && ICONS[tile.icon];
+    if (iconSvg) {
+      modalLink.innerHTML = iconSvg;
+      modalLink.classList.add('icon-only');
+      modalLink.setAttribute('aria-label', `Open ${tile.label || 'link'}`);
+    } else {
+      modalLink.textContent = 'Open link →';
+      modalLink.classList.remove('icon-only');
+      modalLink.removeAttribute('aria-label');
+    }
+
     modal.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
   }
