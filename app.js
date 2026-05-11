@@ -152,12 +152,10 @@
     return el;
   }
 
-  // Render tiles THREE TIMES so the user is always in the middle copy.
-  // This means we can wrap invisibly in either direction without ever
-  // running out of content on the side they're swiping toward.
-  data.tiles.forEach((t, i) => track.appendChild(buildTile(t, i, true)));  // copy A (clone, on the left)
-  data.tiles.forEach((t, i) => track.appendChild(buildTile(t, i, false))); // copy B (the visible one user starts on)
-  data.tiles.forEach((t, i) => track.appendChild(buildTile(t, i, true)));  // copy C (clone, on the right)
+  // Render tiles once. (We previously triple-rendered for an infinite loop,
+  // but the wrap teleport broke video playback on iOS Safari. A simple
+  // start-to-end scroll is more reliable.)
+  data.tiles.forEach((t, i) => track.appendChild(buildTile(t, i, false)));
 
   // ---- Video visibility management (scroll-driven, no IO race conditions) ----
   //
@@ -269,29 +267,9 @@
     requestAnimationFrame(waveTick);
   }
 
-  // ---- Carousel positioning + infinite wrap (no auto-scroll) ----
-  function getCopyWidth() {
-    return track.scrollWidth / 3;
-  }
-  function parkInMiddle() {
-    track.scrollLeft = getCopyWidth();
-  }
-  requestAnimationFrame(parkInMiddle);
-  window.addEventListener('load', parkInMiddle);
-
-  // No auto-drift — user controls everything via swipe / drag / arrows.
-
-  // Wrap invisibly when crossing copy boundaries.
-  // The video playback manager handles any glitches from the teleport.
-  track.addEventListener('scroll', () => {
-    const copyW = getCopyWidth();
-    if (copyW <= 0) return;
-    if (track.scrollLeft >= copyW * 2) {
-      track.scrollLeft -= copyW;
-    } else if (track.scrollLeft < copyW * 0.5) {
-      track.scrollLeft += copyW;
-    }
-  });
+  // ---- Carousel scroll (simple start-to-end, no wrap) ----
+  // Carousel starts at position 0 (Co.Credit) and ends at the last tile.
+  // No teleporting — keeps videos rock-solid on iOS Safari.
 
   // ---- Desktop arrows (Option 1) ----
   // Inject prev/next buttons into the carousel-wrap (CSS hides them on touch devices).

@@ -21,6 +21,14 @@ window.PROFILE_DATA = {
       link: "https://drive.google.com/file/d/1k2Vz6tmSM4VcKWzWlgAYh1Xb40IrYpG2/view?usp=sharing"
     },
     {
+      label: "Leverage Capital",
+      title: "Corporate lending & capital advisory.",
+      description: "Specialising in cashflow lending, M&A, and complex transactions requiring tailored debt structures.",
+      media: "media/leverage-capital.mp4",
+      icon: "globe",
+      link: "https://www.leveragecapital.com.au"
+    },
+    {
       label: "Podcast",
       title: "Behind the build.",
       description: "Conversations around finance, business, growth, and trying to figure it out along the way.",
@@ -44,14 +52,6 @@ window.PROFILE_DATA = {
       media: "media/linkedin.jpg",
       icon: "linkedin",
       link: "https://www.linkedin.com/in/talbotjack"
-    },
-    {
-      label: "Leverage Capital",
-      title: "Corporate lending & capital advisory.",
-      description: "Specialising in cashflow lending, M&A, and complex transactions requiring tailored debt structures.",
-      media: "media/leverage-capital.mp4",
-      icon: "globe",
-      link: "https://www.leveragecapital.com.au"
     }
   ]
 };
