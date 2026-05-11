@@ -13,6 +13,15 @@
 
   const track = document.getElementById('carousel-track');
 
+  // ===== Icon library =====
+  // Inline SVGs keyed by slug. Sized 16px for pill use; CSS scales as needed.
+  const ICONS = {
+    globe: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`,
+    instagram: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>`,
+    linkedin: `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M20.45 20.45h-3.55v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.13 1.45-2.13 2.94v5.67H9.36V9h3.41v1.56h.05a3.74 3.74 0 0 1 3.37-1.85c3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.72V1.72C24 .77 23.2 0 22.22 0z"/></svg>`,
+    mic: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>`,
+  };
+
   function buildTile(tile, index, isClone) {
     const el = document.createElement('article');
     el.className = 'tile';
@@ -25,26 +34,46 @@
     let media;
     if (isVideo) {
       media = document.createElement('video');
-      media.className = 'tile-media';
-      media.src = tile.media;
-      media.muted = true;
-      media.loop = true;
-      media.playsInline = true;
-      media.autoplay = true;
-      media.preload = 'auto';
+      // CRITICAL: iOS Safari decides whether to allow autoplay based on
+      // attributes present BEFORE the src is set. Set them first.
       media.setAttribute('muted', '');
       media.setAttribute('playsinline', '');
       media.setAttribute('webkit-playsinline', '');
       media.setAttribute('autoplay', '');
       media.setAttribute('loop', '');
-      // Nudge play() once metadata is loaded; some browsers (Safari especially)
-      // refuse to autoplay until the call is explicit.
+      media.setAttribute('disablepictureinpicture', '');
+      media.setAttribute('disableremoteplayback', '');
+      media.muted = true;          // property too, belt and braces
+      media.defaultMuted = true;
+      media.loop = true;
+      media.playsInline = true;
+      media.autoplay = true;
+      media.controls = false;
+      media.preload = 'auto';
+      media.className = 'tile-media';
+      // Now set src — only AFTER the muted/playsinline attrs exist
+      media.src = tile.media;
+
+      // Nudge play() — Safari sometimes won't autoplay without an explicit call
       const tryPlay = () => {
         const p = media.play();
-        if (p && typeof p.catch === 'function') p.catch(() => {});
+        if (p && typeof p.catch === 'function') {
+          p.catch(() => {
+            // If autoplay was refused, try again on first user interaction
+            const retry = () => {
+              media.play().catch(() => {});
+              document.removeEventListener('touchstart', retry);
+              document.removeEventListener('click', retry);
+            };
+            document.addEventListener('touchstart', retry, { once: true, passive: true });
+            document.addEventListener('click', retry, { once: true });
+          });
+        }
       };
       media.addEventListener('loadedmetadata', tryPlay);
       media.addEventListener('canplay', tryPlay);
+      // Also try when added to DOM
+      requestAnimationFrame(tryPlay);
     } else {
       media = document.createElement('img');
       media.className = 'tile-media';
@@ -70,8 +99,17 @@
     const pills = document.createElement('div');
     pills.className = 'tile-pills';
     const labelPill = document.createElement('span');
-    labelPill.className = 'pill';
-    labelPill.textContent = tile.label || '';
+    labelPill.className = 'pill pill-label';
+    const iconSvg = tile.icon && ICONS[tile.icon];
+    if (iconSvg) {
+      const iconSpan = document.createElement('span');
+      iconSpan.className = 'pill-icon';
+      iconSpan.innerHTML = iconSvg;
+      labelPill.appendChild(iconSpan);
+    }
+    const labelText = document.createElement('span');
+    labelText.textContent = tile.label || '';
+    labelPill.appendChild(labelText);
     pills.appendChild(labelPill);
 
     const seeMore = document.createElement('button');
@@ -79,7 +117,7 @@
     seeMore.textContent = 'See More';
     seeMore.addEventListener('click', (e) => {
       e.stopPropagation();
-      openModal(index);
+      if (tile.link && tile.link !== '#') window.open(tile.link, '_blank', 'noopener');
     });
     pills.appendChild(seeMore);
     el.appendChild(pills);
@@ -161,43 +199,19 @@
     requestAnimationFrame(waveTick);
   }
 
-  // ---- Infinite auto-scroll + swipe ----
-  let autoScrollPaused = true;  // start paused; un-pause once parked
-  let lastTimestamp = null;
-  const PIXELS_PER_SECOND = 80;
-  let isTouching = false;
-  let lastScrollTime = 0;
-
+  // ---- Carousel positioning + infinite wrap (no auto-scroll) ----
   function getCopyWidth() {
     return track.scrollWidth / 3;
   }
   function parkInMiddle() {
     track.scrollLeft = getCopyWidth();
-    autoScrollPaused = false;
   }
   requestAnimationFrame(parkInMiddle);
   window.addEventListener('load', parkInMiddle);
 
-  // Auto-drift loop. Only writes scrollLeft when:
-  //  - not paused
-  //  - user isn't touching
-  //  - momentum scroll has settled (no scroll event for 200ms)
-  function tick(ts) {
-    if (lastTimestamp === null) lastTimestamp = ts;
-    const dt = (ts - lastTimestamp) / 1000;
-    lastTimestamp = ts;
-
-    const settled = (performance.now() - lastScrollTime) > 200;
-    if (!autoScrollPaused && !isTouching && settled) {
-      track.scrollLeft = track.scrollLeft + PIXELS_PER_SECOND * dt;
-    }
-    requestAnimationFrame(tick);
-  }
-  requestAnimationFrame(tick);
-
+  // No auto-drift — user controls everything via swipe / drag / arrows.
   // Wrap invisibly when crossing copy boundaries
   track.addEventListener('scroll', () => {
-    lastScrollTime = performance.now();
     const copyW = getCopyWidth();
     if (copyW <= 0) return;
     if (track.scrollLeft >= copyW * 2) {
@@ -206,20 +220,6 @@
       track.scrollLeft += copyW;
     }
   });
-
-  // Touch — pause flag only; momentum is allowed to coast freely
-  track.addEventListener('touchstart', () => {
-    isTouching = true;
-    lastTimestamp = null;
-  }, { passive: true });
-  track.addEventListener('touchend', () => {
-    isTouching = false;
-    lastTimestamp = null;
-  }, { passive: true });
-
-  // Desktop hover
-  track.addEventListener('mouseenter', () => { isTouching = true; });
-  track.addEventListener('mouseleave', () => { isTouching = false; lastTimestamp = null; });
 
   // ---- Desktop arrows (Option 1) ----
   // Inject prev/next buttons into the carousel-wrap (CSS hides them on touch devices).
@@ -301,17 +301,6 @@
   const modalTitle = document.getElementById('modal-title');
   const modalDesc  = document.getElementById('modal-desc');
   const modalLink  = document.getElementById('modal-link');
-
-  // Inline SVG icons keyed by slug. All sized 22x22 currentColor for easy theming.
-  const ICONS = {
-    instagram: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>`,
-    linkedin: `<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M20.45 20.45h-3.55v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.13 1.45-2.13 2.94v5.67H9.36V9h3.41v1.56h.05a3.74 3.74 0 0 1 3.37-1.85c3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.72V1.72C24 .77 23.2 0 22.22 0z"/></svg>`,
-    mic: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>`,
-    // Co.Credit — wordmark-style "CO." in a rounded square
-    cocredit: `<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><rect x="1" y="3" width="22" height="18" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><text x="12" y="16" text-anchor="middle" font-family="-apple-system, system-ui, sans-serif" font-size="9" font-weight="800" letter-spacing="-0.05em">CO.</text></svg>`,
-    // Leverage Capital — chevron/up-and-to-the-right (capital growth)
-    leverage: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="14 7 21 7 21 14"/></svg>`,
-  };
 
   function openModal(index) {
     const tile = data.tiles[index];
