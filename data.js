@@ -25,7 +25,7 @@ window.PROFILE_DATA = {
       label: "@jacktalbot___",
       title: "Outside the office.",
       description: "Training, travel, lifestyle, and the process behind building something meaningful.",
-      media: "media/instagram.jpg",
+      media: "media/instagram.mp4",
       icon: "instagram",
       link: "https://www.instagram.com/jacktalbot"
     },
