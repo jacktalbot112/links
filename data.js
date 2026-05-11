@@ -13,6 +13,14 @@ window.PROFILE_DATA = {
       link: "https://www.cocredit.com.au"
     },
     {
+      label: "AFR",
+      title: "Co.Credit news mentions.",
+      description: "Co.Credit is featured in the AFR after the successful raise of $40m.",
+      media: "media/afr.jpg",
+      icon: "news",
+      link: "https://drive.google.com/file/d/1k2Vz6tmSM4VcKWzWlgAYh1Xb40IrYpG2/view?usp=sharing"
+    },
+    {
       label: "Podcast",
       title: "Conversations around money, growth, and business.",
       description: "A podcast on capital, property, business, and the reality of building companies in Australia. Long-form conversations with founders, operators, and industry leaders.",
