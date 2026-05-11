@@ -15,7 +15,7 @@ window.PROFILE_DATA = {
     {
       label: "AFR",
       title: "Co.Credit featured in the AFR.",
-      description: "AFR coverage following Co.Credit's $40m debt facility and continued expansion.",
+      description: "AFR coverage following Co.Credit's raise of $40m and continued expansion.",
       media: "media/afr.jpg",
       icon: "news",
       link: "https://drive.google.com/file/d/1k2Vz6tmSM4VcKWzWlgAYh1Xb40IrYpG2/view?usp=sharing"
@@ -32,7 +32,7 @@ window.PROFILE_DATA = {
     {
       label: "@jacktalbot___",
       title: "Outside the office.",
-      description: "Travel, routines, and life beyond numbers.",
+      description: "Travel, routines, and life beyond the desk.",
       media: "media/instagram.mp4",
       icon: "instagram",
       link: "https://www.instagram.com/jacktalbot___"

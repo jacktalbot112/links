@@ -30,7 +30,9 @@
     if (isClone) el.setAttribute('aria-hidden', 'true');
 
     // Render media as either <img> or <video> based on the file extension.
-    // Videos must be muted+playsinline+autoplay+loop to autoplay on mobile.
+    // Videos: only the "real" (non-clone) copy autoplays. Clones in the
+    // carousel freeze on the first frame to avoid running 6+ simultaneous
+    // <video> elements (iOS Safari has a soft limit and silently fails).
     const isVideo = /\.(mp4|webm|mov)(\?.*)?$/i.test(tile.media || '');
     let media;
     if (isVideo) {
@@ -40,41 +42,51 @@
       media.setAttribute('muted', '');
       media.setAttribute('playsinline', '');
       media.setAttribute('webkit-playsinline', '');
-      media.setAttribute('autoplay', '');
       media.setAttribute('loop', '');
       media.setAttribute('disablepictureinpicture', '');
       media.setAttribute('disableremoteplayback', '');
-      media.muted = true;          // property too, belt and braces
+      media.muted = true;
       media.defaultMuted = true;
       media.loop = true;
       media.playsInline = true;
-      media.autoplay = true;
       media.controls = false;
-      media.preload = 'auto';
+      media.preload = isClone ? 'metadata' : 'auto';
       media.className = 'tile-media';
-      // Now set src — only AFTER the muted/playsinline attrs exist
+      media.dataset.isClone = isClone ? '1' : '0';
+      // Tag so we can find these via querySelectorAll for the IntersectionObserver
+      media.classList.add('tile-video');
+      // Set src AFTER attributes
       media.src = tile.media;
 
-      // Nudge play() — Safari sometimes won't autoplay without an explicit call
-      const tryPlay = () => {
-        const p = media.play();
-        if (p && typeof p.catch === 'function') {
-          p.catch(() => {
-            // If autoplay was refused, try again on first user interaction
-            const retry = () => {
-              media.play().catch(() => {});
-              document.removeEventListener('touchstart', retry);
-              document.removeEventListener('click', retry);
-            };
-            document.addEventListener('touchstart', retry, { once: true, passive: true });
-            document.addEventListener('click', retry, { once: true });
-          });
-        }
-      };
-      media.addEventListener('loadedmetadata', tryPlay);
-      media.addEventListener('canplay', tryPlay);
-      // Also try when added to DOM
-      requestAnimationFrame(tryPlay);
+      if (!isClone) {
+        media.setAttribute('autoplay', '');
+        media.autoplay = true;
+
+        const tryPlay = () => {
+          const p = media.play();
+          if (p && typeof p.catch === 'function') {
+            p.catch(() => {
+              // Retry on first user interaction anywhere on the page
+              const retry = () => {
+                media.play().catch(() => {});
+                document.removeEventListener('touchstart', retry);
+                document.removeEventListener('click', retry);
+              };
+              document.addEventListener('touchstart', retry, { once: true, passive: true });
+              document.addEventListener('click', retry, { once: true });
+            });
+          }
+        };
+        media.addEventListener('loadedmetadata', tryPlay);
+        media.addEventListener('canplay', tryPlay);
+        requestAnimationFrame(tryPlay);
+      } else {
+        // Clones: load just enough to show frame 1 and stay paused
+        media.addEventListener('loadeddata', () => {
+          try { media.currentTime = 0.05; } catch (e) {}
+          media.pause();
+        });
+      }
     } else {
       media = document.createElement('img');
       media.className = 'tile-media';
@@ -146,6 +158,35 @@
   data.tiles.forEach((t, i) => track.appendChild(buildTile(t, i, true)));  // copy A (clone, on the left)
   data.tiles.forEach((t, i) => track.appendChild(buildTile(t, i, false))); // copy B (the visible one user starts on)
   data.tiles.forEach((t, i) => track.appendChild(buildTile(t, i, true)));  // copy C (clone, on the right)
+
+  // ---- IntersectionObserver: keep visible videos playing ----
+  // If a video gets stuck on its first frame (common on iOS Safari) the user
+  // scrolling it into view should kick it back to life. Pauses videos that
+  // scroll out of view to save CPU.
+  if ('IntersectionObserver' in window) {
+    const visObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        const v = entry.target;
+        if (entry.isIntersecting) {
+          // Only attempt for the non-clone copies
+          if (v.dataset.isClone === '1') return;
+          if (v.paused || v.ended) {
+            const p = v.play();
+            if (p && typeof p.catch === 'function') p.catch(() => {});
+          }
+        } else {
+          // Don't pause clones (they're already paused intentionally)
+          if (v.dataset.isClone === '0' && !v.paused) {
+            v.pause();
+          }
+        }
+      });
+    }, {
+      root: track,             // observe within the carousel scroll container
+      threshold: 0.4,          // 40% of the video must be visible
+    });
+    document.querySelectorAll('.tile-video').forEach((v) => visObserver.observe(v));
+  }
 
   // ---- Animated waveform driver ----
   // Generates a smooth pseudo-audio waveform path and updates all .wave-path
