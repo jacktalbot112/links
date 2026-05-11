@@ -1,55 +1,55 @@
 window.PROFILE_DATA = {
   profile: {
     name: "JACK TALBOT",
-    bio: "Building companies in finance and documenting the process. Co-founder of Co.Credit. Director at Leverage Capital. Melbourne based."
+    bio: "Building finance companies and documenting what I'm learning along the way. Co-founder of Co.Credit and Director at Leverage Capital. Based in Melbourne."
   },
   tiles: [
     {
       label: "Co.Credit",
-      title: "Funding brokers against trail income.",
-      description: "Building Co.Credit. We help Australian mortgage brokers access capital to buy trail books, grow, or unlock equity from the business they've built — without property security.",
+      title: "Building a new kind of lender.",
+      description: "Co.Credit helps businesses unlock capital using recurring income instead of property as security.",
       media: "media/cocredit.mp4",
       icon: "globe",
       link: "https://www.cocredit.com.au"
     },
     {
       label: "AFR",
-      title: "Co.Credit news mentions.",
-      description: "Co.Credit is featured in the AFR after the successful raise of $40m.",
+      title: "Co.Credit featured in the AFR.",
+      description: "AFR coverage following Co.Credit's $40m debt facility and continued expansion.",
       media: "media/afr.jpg",
       icon: "news",
       link: "https://drive.google.com/file/d/1k2Vz6tmSM4VcKWzWlgAYh1Xb40IrYpG2/view?usp=sharing"
     },
     {
       label: "Podcast",
-      title: "Conversations around money, growth, and business.",
-      description: "A podcast on capital, property, business, and the reality of building companies in Australia. Long-form conversations with founders, operators, and industry leaders.",
+      title: "Behind the build.",
+      description: "Conversations around finance, business, growth, and trying to figure it out along the way.",
       media: "media/podcast.jpg",
       overlay: "waveform",
       icon: "mic",
-      link: "https://podcasts.apple.com/us/podcast/leverage-capital-jack-talbot/id1752419438"
+      link: "https://open.spotify.com/show/6UHH4iUlmunxPzVsaNrLJ8?si=696f3d41b2e247ca"
     },
     {
       label: "@jacktalbot___",
       title: "Outside the office.",
-      description: "Training, travel, lifestyle, and the process behind building something meaningful.",
+      description: "Travel, routines, and life beyond numbers.",
       media: "media/instagram.mp4",
       icon: "instagram",
-      link: "https://www.instagram.com/jacktalbot"
+      link: "https://www.instagram.com/jacktalbot___"
     },
     {
       label: "LinkedIn",
-      title: "Thoughts from inside the industry.",
-      description: "Deal flow, lending, capital raising, business growth, and what I'm learning while building in public.",
+      title: "Industry conversations and observations.",
+      description: "Thoughts and conversations around finance, business, and navigating growth.",
       media: "media/linkedin.jpg",
       icon: "linkedin",
       link: "https://www.linkedin.com/in/talbotjack"
     },
     {
       label: "Leverage Capital",
-      title: "Commercial debt, structured properly.",
-      description: "Debt advisory for operators, founders, and growing businesses. Straight answers, practical structures, and a focus on what actually gets deals done.",
-      media: "media/leverage-capital.jpg",
+      title: "Corporate lending & capital advisory.",
+      description: "Specialising in cashflow lending, M&A, and complex transactions requiring tailored debt structures.",
+      media: "media/leverage-capital.mp4",
       icon: "globe",
       link: "https://www.leveragecapital.com.au"
     }
