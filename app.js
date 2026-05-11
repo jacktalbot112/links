@@ -159,71 +159,62 @@
   data.tiles.forEach((t, i) => track.appendChild(buildTile(t, i, false))); // copy B (the visible one user starts on)
   data.tiles.forEach((t, i) => track.appendChild(buildTile(t, i, true)));  // copy C (clone, on the right)
 
-  // ---- IntersectionObserver: keep visible videos playing ----
-  // If a video gets stuck on its first frame (common on iOS Safari) the user
-  // scrolling it into view should kick it back to life. Pauses videos that
-  // scroll out of view to save CPU.
-  if ('IntersectionObserver' in window) {
-    const visObserver = new IntersectionObserver((entries) => {
-      // Skip during the wrap-teleport window — otherwise we'd rapid-fire
-      // pause/play on whichever video happens to be at the boundary and
-      // iOS Safari will glitch it into a permanently-stuck state.
-      if (performance.now() < suppressIOUntil) return;
+  // ---- Video visibility management (scroll-driven, no IO race conditions) ----
+  //
+  // Strategy: on every scroll of the carousel (and on a low-rate timer), check
+  // each non-clone video's position relative to the carousel viewport. If it's
+  // overlapping the visible area, ensure it's playing. If not, pause it.
+  //
+  // This is more reliable than IntersectionObserver because:
+  //   1. No edge-triggered events that can be missed during wrap teleports
+  //   2. No race between IO firing and the wrap suppression window
+  //   3. iOS Safari is happy to receive play() on an already-playing video
+  //   4. Idempotent: every call moves toward the correct state
+  function manageVideoPlayback() {
+    const trackRect = track.getBoundingClientRect();
+    const trackLeft = trackRect.left;
+    const trackRight = trackRect.right;
 
-      entries.forEach((entry) => {
-        const v = entry.target;
-        if (entry.isIntersecting) {
-          if (v.dataset.isClone === '1') return;
-          if (v.paused || v.ended) {
-            const p = v.play();
-            if (p && typeof p.catch === 'function') p.catch(() => {});
-          }
-        } else {
-          if (v.dataset.isClone === '0' && !v.paused) {
-            v.pause();
-          }
-        }
-      });
-    }, {
-      root: track,
-      threshold: 0.4,
-    });
-    document.querySelectorAll('.tile-video').forEach((v) => visObserver.observe(v));
+    document.querySelectorAll('.tile-video').forEach((v) => {
+      if (v.dataset.isClone === '1') return;  // clones stay frozen
 
-    // Stuck-video recovery: every 1.5s, check non-clone videos that should be
-    // playing but aren't progressing. If a video element has been visibly
-    // stuck on a single frame, reload its src and try again.
-    setInterval(() => {
-      document.querySelectorAll('.tile-video[data-is-clone="0"]').forEach((v) => {
-        // Skip if not visible (would be paused by IO intentionally)
-        const rect = v.getBoundingClientRect();
-        const visible = rect.right > 0 && rect.left < window.innerWidth;
-        if (!visible) return;
+      const r = v.getBoundingClientRect();
+      // Consider a video "visible" if more than 40% of its width is in the
+      // track viewport.
+      const visibleLeft = Math.max(r.left, trackLeft);
+      const visibleRight = Math.min(r.right, trackRight);
+      const visibleWidth = Math.max(0, visibleRight - visibleLeft);
+      const isVisible = visibleWidth >= r.width * 0.4;
 
-        // Check stuckness: same currentTime as last check, and supposed to be playing
-        const last = v.dataset.lastTime ? parseFloat(v.dataset.lastTime) : -1;
-        const now = v.currentTime;
-        v.dataset.lastTime = String(now);
-
-        const isStuck = !v.paused === false && now === last && now < 0.2;
-        // i.e. paused-but-should-play AND currentTime hasn't moved AND we're near the start
-        if (v.paused && now === last && performance.now() > suppressIOUntil) {
-          // Try a simple resume first
+      if (isVisible) {
+        if (v.paused || v.ended) {
           const p = v.play();
-          if (p && typeof p.catch === 'function') {
-            p.catch(() => {
-              // Hard recovery: reload the source
-              const src = v.src;
-              v.removeAttribute('src');
-              v.load();
-              v.src = src;
-              v.play().catch(() => {});
-            });
-          }
+          if (p && typeof p.catch === 'function') p.catch(() => {});
         }
-      });
-    }, 1500);
+      } else {
+        if (!v.paused) v.pause();
+      }
+    });
   }
+
+  // Run on scroll (debounced via rAF so we only do work once per frame)
+  let scheduled = false;
+  track.addEventListener('scroll', () => {
+    if (scheduled) return;
+    scheduled = true;
+    requestAnimationFrame(() => {
+      scheduled = false;
+      manageVideoPlayback();
+    });
+  }, { passive: true });
+
+  // Also run periodically as a safety net (catches videos that got stuck
+  // for any reason — iOS Low Power Mode, app backgrounded mid-play, etc.)
+  setInterval(manageVideoPlayback, 1000);
+
+  // Run once on first paint so visible videos start playing
+  requestAnimationFrame(manageVideoPlayback);
+
 
   // ---- Animated waveform driver ----
   // Generates a smooth pseudo-audio waveform path and updates all .wave-path
@@ -290,25 +281,15 @@
 
   // No auto-drift — user controls everything via swipe / drag / arrows.
 
-  // Wrap-teleport guard: when we invisibly jump the scroll position to wrap
-  // around, the IntersectionObserver will briefly think videos went out of
-  // view and back. Rapid pause/play on iOS Safari can leave <video> elements
-  // stuck. We set a flag so the IO ignores changes during the wrap window.
-  let suppressIOUntil = 0;
-  function bumpSuppressWindow() {
-    suppressIOUntil = performance.now() + 350;
-  }
-
-  // Wrap invisibly when crossing copy boundaries
+  // Wrap invisibly when crossing copy boundaries.
+  // The video playback manager handles any glitches from the teleport.
   track.addEventListener('scroll', () => {
     const copyW = getCopyWidth();
     if (copyW <= 0) return;
     if (track.scrollLeft >= copyW * 2) {
       track.scrollLeft -= copyW;
-      bumpSuppressWindow();
     } else if (track.scrollLeft < copyW * 0.5) {
       track.scrollLeft += copyW;
-      bumpSuppressWindow();
     }
   });
 
